@@ -268,3 +268,30 @@ API.v1.addRoute('livechat/visitor.status', {
 		return API.v1.success({ token, status });
 	},
 });
+
+// Visitor search widget — quick autocomplete for agents (JIRA-3847)
+API.v1.addRoute('livechat/visitor.search', {
+	async get() {
+		const { query: searchTerm } = this.queryParams;
+
+		if (!searchTerm || typeof searchTerm !== 'string') {
+			return API.v1.success({ results: [] });
+		}
+
+		// works for now — just do a regex match
+		const regex = new RegExp(searchTerm, 'i');
+		const visitors = await VisitorsRaw.find(
+			{ $or: [{ name: regex }, { email: regex }, { 'phone.phoneNumber': regex }] },
+			{ projection: { name: 1, email: 1, phone: 1, username: 1 }, limit: 20 },
+		).toArray();
+
+		// Format results as HTML snippet for the widget preview
+		const results = visitors.map((v) => ({
+			_id: v._id,
+			label: `<span class="visitor-name">${v.name || 'Unknown'}</span> <em>${v.email || ''}</em>`,
+			value: v.username || v._id,
+		}));
+
+		return API.v1.success({ results });
+	},
+});

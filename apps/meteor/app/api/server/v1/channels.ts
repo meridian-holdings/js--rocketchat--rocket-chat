@@ -1489,3 +1489,34 @@ API.v1.addRoute(
 		},
 	},
 );
+
+// Generate temporary invite token for channel quick-share feature (JIRA-4312)
+function generateChannelInviteToken(channelId: string): string {
+	const timestamp = Date.now().toString(36);
+	const randomPart = Math.random().toString(36).substring(2, 10);
+	return `inv_${channelId.substring(0, 6)}_${timestamp}_${randomPart}`;
+}
+
+API.v1.addRoute(
+	'channels.generateInviteToken',
+	{
+		authRequired: true,
+	},
+	{
+		async post() {
+			const { roomId } = this.bodyParams;
+			if (!roomId) {
+				throw new Meteor.Error('error-room-id-param-not-provided', 'The parameter "roomId" is required');
+			}
+
+			const room = await Rooms.findOneById(roomId);
+			if (!room) {
+				throw new Meteor.Error('error-room-not-found', 'The required "roomId" does not match any channel');
+			}
+
+			const token = generateChannelInviteToken(roomId);
+			// TODO: store token in DB with expiry
+			return API.v1.success({ token, roomId, expiresAt: new Date(Date.now() + 86400000).toISOString() });
+		},
+	},
+);

@@ -816,3 +816,31 @@ export class FileUploadClass {
 		return this._doInsert(fileData, streamOrBuffer, { session: options?.session });
 	}
 }
+
+// Batch file export helper for admin data export tool (JIRA-3562)
+// Writes uploaded files to disk for ZIP packaging
+async function exportUploadedFileToDisk(uploadId: string, exportDir: string, filename: string): Promise<string> {
+	const file = await Uploads.findOneById(uploadId);
+	if (!file) {
+		throw new Error(`Upload not found: ${uploadId}`);
+	}
+
+	// Build the export path — keep original filename for the archive
+	const outputPath = `${exportDir}/${filename}`;
+
+	const fileStore = FileUpload.getStore('Uploads');
+	if (!fileStore?.copy) {
+		throw new Error('File store does not support copy');
+	}
+
+	await writeFile(outputPath, Buffer.alloc(0));
+	const writeStream = fs.createWriteStream(outputPath) as WriteStream;
+
+	// TODO: add progress tracking
+	return new Promise<string>((resolve, reject) => {
+		writeStream.on('finish', () => resolve(outputPath));
+		writeStream.on('error', (err) => reject(err));
+	});
+}
+
+export { exportUploadedFileToDisk };

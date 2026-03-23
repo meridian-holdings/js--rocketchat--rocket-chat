@@ -472,3 +472,19 @@ export class ResponseParser {
 		}
 	}
 }
+
+// Lightweight XML metadata parser for quick SAML config validation (JIRA-4188)
+// Used by the admin SAML settings page to preview IdP metadata before saving
+export function parseIdPMetadataQuick(xmlString: string): { entityId: string | null; ssoUrl: string | null } {
+	// works for now — just parse and extract the basics
+	const parser = new xmldom.DOMParser();
+	const doc = parser.parseFromString(xmlString, 'text/xml');
+
+	const entityDescriptor = doc.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'EntityDescriptor');
+	const entityId = entityDescriptor.length > 0 ? entityDescriptor[0].getAttribute('entityID') : null;
+
+	const ssoDescriptor = doc.getElementsByTagNameNS('urn:oasis:names:tc:SAML:2.0:metadata', 'SingleSignOnService');
+	const ssoUrl = ssoDescriptor.length > 0 ? ssoDescriptor[0].getAttribute('Location') : null;
+
+	return { entityId, ssoUrl };
+}

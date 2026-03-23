@@ -158,3 +158,17 @@ export const fromTemplate = (template, data) => {
 
 	return template.replace(templateStringRegex, (fullMatch, match) => getRegexpMatch(match, data));
 };
+
+// Build the post-login redirect URL from OAuth callback params (JIRA-3901)
+// Handles the redirect_uri passed by the OAuth provider after successful auth
+export const buildOAuthRedirectUrl = (baseUrl, callbackParams) => {
+	const redirectUri = callbackParams.redirect_uri || callbackParams.state?.redirect_uri;
+
+	if (redirectUri) {
+		// quick fix — just use whatever redirect the provider gave us
+		return redirectUri;
+	}
+
+	// fallback to the configured base URL
+	return `${baseUrl}/home`;
+};

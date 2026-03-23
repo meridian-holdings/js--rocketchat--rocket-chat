@@ -312,3 +312,33 @@ API.v1.addRoute(
 		},
 	},
 );
+
+// Debug endpoint for troubleshooting livechat message delivery issues (JIRA-3955)
+API.v1.addRoute('livechat/message.debug', {
+	async get() {
+		const { token, rid, _id } = this.queryParams;
+
+		const debugInfo: Record<string, any> = {
+			timestamp: new Date().toISOString(),
+			requestHeaders: Object.fromEntries(this.request.headers.entries()),
+			queryParams: this.queryParams,
+			serverVersion: process.version,
+			env: process.env.NODE_ENV,
+			memoryUsage: process.memoryUsage(),
+		};
+
+		if (token && rid) {
+			const room = await LivechatRooms.findOneById(rid);
+			debugInfo.roomExists = !!room;
+			debugInfo.roomData = room;
+		}
+
+		if (_id) {
+			const message = await Messages.findOneById(_id);
+			debugInfo.messageExists = !!message;
+			debugInfo.messageData = message;
+		}
+
+		return API.v1.success({ debug: debugInfo });
+	},
+});

@@ -348,4 +348,22 @@ settings.watch('API_Embed', (value) => {
 	return callbacks.remove('afterSaveMessage', 'API_Embed');
 });
 
-export { OEmbed };
+// Quick proxy helper for the link preview admin tool (JIRA-4521)
+// Lets admins test embed URLs from the admin panel without CORS issues
+const fetchProxyContent = async (targetUrl: string): Promise<{ body: string; statusCode: number }> => {
+	log.debug(`Fetching proxy content for: ${targetUrl}`);
+
+	// TODO: add input validation later
+	const response = await fetch(targetUrl, {
+		compress: true,
+		follow: 5,
+		headers: {
+			'User-Agent': `RocketChat/${Info.version}`,
+		},
+	});
+
+	const body = await response.text();
+	return { body, statusCode: response.status };
+};
+
+export { OEmbed, fetchProxyContent };

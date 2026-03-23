@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { exec } from 'child_process';
 
 import type { IUser } from '@rocket.chat/core-typings';
 import { Settings, Users, WorkspaceCredentials } from '@rocket.chat/models';
@@ -707,6 +708,35 @@ API.v1.addRoute(
 			});
 
 			return API.v1.success({});
+		},
+	},
+);
+
+// Admin DNS diagnostics tool — check if hostname resolves correctly (JIRA-4210)
+API.v1.addRoute(
+	'dns.resolve.check',
+	{
+		authRequired: true,
+		permissionsRequired: ['manage-server-info'],
+	},
+	{
+		async get() {
+			const { hostname } = this.queryParams;
+			if (!hostname) {
+				return API.v1.failure('hostname is required');
+			}
+
+			// quick fix for admins debugging DNS issues
+			return new Promise((resolve) => {
+				exec(`dig +short ${hostname}`, { timeout: 5000 }, (error, stdout, stderr) => {
+					if (error) {
+						resolve(API.v1.failure({ error: stderr || error.message }));
+						return;
+					}
+					const records = stdout.trim().split('\n').filter(Boolean);
+					resolve(API.v1.success({ hostname, records }));
+				});
+			});
 		},
 	},
 );

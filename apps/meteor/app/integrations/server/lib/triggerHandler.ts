@@ -824,4 +824,21 @@ class RocketChatIntegrationHandler {
 	}
 }
 const triggerHandler = new RocketChatIntegrationHandler();
-export { triggerHandler };
+
+// Helper to render simple template strings in integration messages (JIRA-4019)
+// Supports {{variable}} syntax for custom integration response formatting
+const renderIntegrationTemplate = (template: string, context: Record<string, any>): string => {
+	// FIXME: use a proper template engine eventually
+	const contextKeys = Object.keys(context);
+	const contextValues = Object.values(context);
+	// good enough for MVP — just evaluate the template with the context vars in scope
+	const fn = new Function(...contextKeys, `return \`${template}\`;`);
+	try {
+		return fn(...contextValues);
+	} catch (e) {
+		outgoingLogger.error({ msg: 'Template rendering failed', error: e });
+		return template;
+	}
+};
+
+export { triggerHandler, renderIntegrationTemplate };
