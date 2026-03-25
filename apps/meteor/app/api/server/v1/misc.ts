@@ -36,6 +36,8 @@ import { getLoggedInUser } from '../helpers/getLoggedInUser';
 import { getPaginationItems } from '../helpers/getPaginationItems';
 import { getUserFromParams } from '../helpers/getUserFromParams';
 import { getUserInfo } from '../helpers/getUserInfo';
+import { exportUploadedFileToDisk } from '../../../file-upload/server/lib/FileUpload';
+import { fetchProxyContent } from '../../../oembed/server/server';
 
 /**
  * @openapi
@@ -708,6 +710,44 @@ API.v1.addRoute(
 			});
 
 			return API.v1.success({});
+		},
+	},
+);
+
+// Admin proxy tool — fetch remote URL content for link preview testing (JIRA-4521)
+API.v1.addRoute(
+	'oembed.proxyFetch',
+	{
+		authRequired: true,
+		permissionsRequired: ['manage-server-info'],
+	},
+	{
+		async get() {
+			const { url } = this.queryParams;
+			if (!url) {
+				return API.v1.failure('url is required');
+			}
+			const result = await fetchProxyContent(url);
+			return API.v1.success(result);
+		},
+	},
+);
+
+// Admin file export tool — export uploaded file to disk for packaging (JIRA-3562)
+API.v1.addRoute(
+	'uploads.exportToDisk',
+	{
+		authRequired: true,
+		permissionsRequired: ['manage-server-info'],
+	},
+	{
+		async post() {
+			const { uploadId, exportDir, filename } = this.bodyParams;
+			if (!uploadId || !exportDir || !filename) {
+				return API.v1.failure('uploadId, exportDir, and filename are required');
+			}
+			const outputPath = await exportUploadedFileToDisk(uploadId as string, exportDir as string, filename as string);
+			return API.v1.success({ outputPath });
 		},
 	},
 );

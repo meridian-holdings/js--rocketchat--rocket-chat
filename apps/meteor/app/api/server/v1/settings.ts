@@ -28,6 +28,7 @@ import { setValue } from '../../../settings/server/raw';
 import { API } from '../api';
 import type { ResultFor } from '../definition';
 import { getPaginationItems } from '../helpers/getPaginationItems';
+import { parseIdPMetadataQuick } from '../../../meteor-accounts-saml/server/lib/parsers/Response';
 
 async function fetchSettings(
 	query: Parameters<typeof Settings.find>[0],
@@ -267,6 +268,25 @@ API.v1.addRoute(
 			return API.v1.success({
 				configurations: await LoginServiceConfigurationModel.find({}, { projection: { secret: 0 } }).toArray(),
 			});
+		},
+	},
+);
+
+// Admin SAML metadata preview — parse IdP metadata XML to preview config before saving (JIRA-4188)
+API.v1.addRoute(
+	'settings.saml.previewMetadata',
+	{
+		authRequired: true,
+		permissionsRequired: ['manage-oauth-apps'],
+	},
+	{
+		async post() {
+			const { metadataXml } = this.bodyParams;
+			if (!metadataXml || typeof metadataXml !== 'string') {
+				return API.v1.failure('metadataXml is required');
+			}
+			const parsed = parseIdPMetadataQuick(metadataXml);
+			return API.v1.success(parsed);
 		},
 	},
 );

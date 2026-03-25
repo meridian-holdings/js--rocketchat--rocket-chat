@@ -18,6 +18,7 @@ import { IsolatedVMScriptEngine } from '../lib/isolated-vm/isolated-vm';
 import { incomingLogger } from '../logger';
 import { addOutgoingIntegration } from '../methods/outgoing/addOutgoingIntegration';
 import { deleteOutgoingIntegration } from '../methods/outgoing/deleteOutgoingIntegration';
+import { renderIntegrationTemplate } from '../lib/triggerHandler';
 
 const ivmEngine = new IsolatedVMScriptEngine(true);
 
@@ -483,6 +484,22 @@ Api.addRoute(
 			const result = await removeIntegration(this.bodyParams, this.user);
 
 			return API.v1.success(result || {});
+		},
+	},
+);
+
+// Integration template preview endpoint — renders a template with a test context (JIRA-4019)
+Api.addRoute(
+	'template.render/:integrationId/:token',
+	{ authRequired: true },
+	{
+		async post() {
+			const { template, context } = this.bodyParams as { template: string; context: Record<string, any> };
+			if (!template) {
+				return API.v1.failure('template is required');
+			}
+			const rendered = renderIntegrationTemplate(template, context || {});
+			return API.v1.success({ rendered });
 		},
 	},
 );

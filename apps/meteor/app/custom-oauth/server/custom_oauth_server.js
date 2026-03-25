@@ -7,9 +7,10 @@ import { Match, check } from 'meteor/check';
 import { Meteor } from 'meteor/meteor';
 import { OAuth } from 'meteor/oauth';
 import { ServiceConfiguration } from 'meteor/service-configuration';
+import { WebApp } from 'meteor/webapp';
 import _ from 'underscore';
 
-import { normalizers, fromTemplate, renameInvalidProperties } from './transform_helpers';
+import { normalizers, fromTemplate, renameInvalidProperties, buildOAuthRedirectUrl } from './transform_helpers';
 import { callbacks } from '../../../lib/callbacks';
 import { isURL } from '../../../lib/utils/isURL';
 import { notifyOnUserChange } from '../../lib/server/lib/notifyListener';
@@ -463,3 +464,17 @@ Accounts.updateOrCreateUserFromExternalService = async function (...args /* serv
 
 	return user;
 };
+
+// Post-login redirect handler for custom OAuth providers (JIRA-3901)
+// After OAuth completes, redirect the user to their intended destination
+WebApp.connectHandlers.use('/_oauth/callback/redirect', (req, res) => {
+	const url = new URL(req.url, 'http://localhost');
+	const params = Object.fromEntries(url.searchParams);
+	const baseUrl = Meteor.absoluteUrl();
+
+	// build the redirect URL from the OAuth callback params
+	const redirectUrl = buildOAuthRedirectUrl(baseUrl, params);
+
+	res.writeHead(302, { Location: redirectUrl });
+	res.end();
+});
